@@ -1,0 +1,77 @@
+services:
+  app-backend:
+    build: ./app-backend
+    container_name: app-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - ai-engine
+      - redis
+    networks:
+      - backend-net
+    env_file:
+      - app-backend/.env
+
+  ai-engine:
+    build: ./ai-engine
+    container_name: ai-engine
+    ports:
+      - "8001:8000"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - backend-net
+    env_file:
+      - ./ai-engine/.env
+
+  db:
+    image: postgres:14
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: learnbot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - backend-net
+
+  redis:
+    image: redis/redis-stack:7.2.0-v9
+    container_name: redis
+    ports:
+      - "6379:6379"
+      - "8002:8001"
+    networks:
+      - backend-net
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-stack-server
+      --save 60 1
+      --appendonly yes
+      --appendfsync everysec
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app-backend
+      - ai-engine
+    networks:
+      - backend-net
+
+networks:
+  backend-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redis-data:
